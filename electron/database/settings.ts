@@ -1,0 +1,9 @@
+﻿import { getDatabase } from './database';
+export function getSettings(){const row=getDatabase().prepare(`SELECT shop_name AS shopName,shop_address AS address,mobile_number AS mobile,email,gstin,state_code AS stateCode,invoice_prefix AS invoicePrefix,currency,logo_path AS logoPath,invoice_format AS invoiceFormat,tax_inclusive AS taxInclusive,allow_negative_stock AS allowNegativeStock FROM settings ORDER BY id LIMIT 1`).get() as any;return {...row,taxInclusive:Boolean(row?.taxInclusive),allowNegativeStock:Boolean(row?.allowNegativeStock)};}
+export function updateSettings(input:any){
+ const text=(v:any,max:number)=>{if(v==null)return null;if(typeof v!=='string'||v.length>max)throw new Error('A settings value is invalid.');return v.trim()||null;};
+ const invoiceFormat=text(input.invoiceFormat,10)||'A4';if(!['A4','A5','80mm','58mm'].includes(invoiceFormat))throw new Error('Choose a supported invoice format.');
+ const shopName=text(input.shopName,120),address=text(input.address,500),mobile=text(input.mobile,30),email=text(input.email,120),gstin=text(input.gstin,20),stateCode=text(input.stateCode,2),invoicePrefix=text(input.invoicePrefix,12),logoPath=text(input.logoPath,500),taxInclusive=Boolean(input.taxInclusive),currency='INR';
+ if(stateCode&& !/^\d{2}$/.test(stateCode))throw new Error('State code must contain two digits.');if(!invoicePrefix||!/^[A-Za-z0-9_-]+$/.test(invoicePrefix))throw new Error('Invoice prefix can contain letters, numbers, hyphen and underscore.');
+ const db=getDatabase();db.prepare(`UPDATE settings SET shop_name=?,shop_address=?,mobile_number=?,email=?,gstin=?,state_code=?,invoice_prefix=?,logo_path=?,invoice_format=?,tax_inclusive=?,currency=?,updated_at=datetime('now') WHERE id=(SELECT id FROM settings ORDER BY id LIMIT 1)`).run(shopName,address,mobile,email,gstin,stateCode,invoicePrefix,logoPath,invoiceFormat,taxInclusive?1:0,currency);return getSettings();
+}
